@@ -44,8 +44,8 @@ def test_grab_endpoint_valid_request(client, auth_headers):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "error"  # Expected since not implemented yet
-    assert "not yet implemented" in data["message"]
+    assert data["status"] == "error"  # Expected since Radarr not accessible in test
+    assert "Failed to add movie to Radarr" in data["message"]
 
 
 def test_grab_endpoint_with_year(client, auth_headers):

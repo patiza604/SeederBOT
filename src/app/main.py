@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import settings
 from .models import GrabRequest, GrabResponse, HealthResponse
+from .radarr import radarr_client
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -80,12 +81,34 @@ async def grab_media(
         logger.info(f"Grab request: {request.title} ({request.type})")
 
         if settings.mode == "radarr":
-            # TODO: Implement Radarr path in Stage 2
-            return GrabResponse(
-                status="error",
-                message="Radarr mode not yet implemented",
-                details={"mode": "radarr", "title": request.title}
-            )
+            try:
+                result = await radarr_client.grab_movie(request.title, request.year)
+                return GrabResponse(
+                    status="success",
+                    message=f"Successfully added '{request.title}' to Radarr with auto-search",
+                    details={
+                        "mode": "radarr",
+                        "title": request.title,
+                        "year": request.year,
+                        "movie_id": result["radarr_result"].get("id"),
+                        "tmdb_id": result["movie"].get("tmdbId"),
+                        "search_triggered": result["search_triggered"]
+                    }
+                )
+            except ValueError as e:
+                # Movie not found
+                return GrabResponse(
+                    status="error",
+                    message=str(e),
+                    details={"mode": "radarr", "title": request.title, "year": request.year}
+                )
+            except Exception as e:
+                logger.error(f"Radarr error: {str(e)}")
+                return GrabResponse(
+                    status="error",
+                    message="Failed to add movie to Radarr",
+                    details={"mode": "radarr", "title": request.title, "error": str(e)}
+                )
 
         elif settings.mode == "blackhole":
             # TODO: Implement blackhole path in Stage 3
