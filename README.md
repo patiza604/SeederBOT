@@ -1,3 +1,14 @@
+<div align="center">
+<pre>
+              __   __                 _______________      _____  
+___________ _/  |_|__|____________   /  _____/\   _  \    /  |  | 
+\____ \__  \\   __\  \___   /\__  \ /   __  \ /  /_\  \  /   |  |_
+|  |_> > __ \|  | |  |/    /  / __ \\  |__\  \\  \_/   \/    ^   /
+|   __(____  /__| |__/_____ \(____  /\_____  / \_____  /\____   | 
+|__|       \/              \/     \/       \/        \/      |__|
+</pre>
+</div>
+
 # SeederBot 🤖
 
 [![Build Status](https://github.com/patiza604/SeederBOT/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/patiza604/SeederBOT/actions)
