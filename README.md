@@ -1,6 +1,6 @@
 # SeederBot 🤖
 
-[![Build Status](https://github.com/your-username/seederbot/workflows/CI/badge.svg)](https://github.com/your-username/seederbot/actions)
+[![Build Status](https://github.com/patiza604/SeederBOT/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/patiza604/SeederBOT/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-00a393.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg)](https://www.docker.com/)
@@ -48,8 +48,8 @@ Mode B (Fallback): POST /grab → Jackett API → Download .torrent → Watch Fo
 
 1. **Clone and configure**:
    ```bash
-   git clone https://github.com/your-username/seederbot.git
-   cd seederbot
+   git clone https://github.com/patiza604/SeederBOT.git
+   cd SeederBOT
    cp .env.example .env
    # Edit .env with your configuration
    ```
@@ -371,8 +371,8 @@ poetry run mypy src
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/seederbot.git
-cd seederbot
+git clone https://github.com/patiza604/SeederBOT.git
+cd SeederBOT
 
 # Install dependencies
 poetry install
