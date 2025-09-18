@@ -1,0 +1,48 @@
+# Standalone SeederBot deployment
+# Use when you have existing Radarr/Jackett services elsewhere
+version: '3.8'
+
+services:
+  seederbot:
+    build: .
+    container_name: seederbot-standalone
+    ports:
+      - "8000:8000"
+    environment:
+      # App Configuration
+      - APP_TOKEN=${APP_TOKEN:-your-secure-random-token-here}
+      - MODE=${MODE:-radarr}
+      - HOST=0.0.0.0
+      - PORT=8000
+
+      # External Radarr Configuration
+      - RADARR_URL=${RADARR_URL:-http://your-radarr-host:7878}
+      - RADARR_API_KEY=${RADARR_API_KEY}
+      - ROOT_FOLDER=${ROOT_FOLDER:-/movies}
+      - QUALITY_PROFILE_ID=${QUALITY_PROFILE_ID:-4}
+
+      # External Jackett Configuration
+      - JACKETT_URL=${JACKETT_URL:-http://your-jackett-host:9117}
+      - JACKETT_API_KEY=${JACKETT_API_KEY}
+
+      # Blackhole Configuration
+      - CATEGORIES=${CATEGORIES:-2000,2010}
+      - MIN_SEEDERS=${MIN_SEEDERS:-20}
+      - QUALITY_REGEX=${QUALITY_REGEX:-1080p.*WEB-DL|1080p.*BluRay}
+      - EXCLUDE_REGEX=${EXCLUDE_REGEX:-CAM|TS|TC|WORKPRINT}
+      - MIN_SIZE_GB=${MIN_SIZE_GB:-2.5}
+      - MAX_SIZE_GB=${MAX_SIZE_GB:-6.0}
+      - AUTOADD_WATCH_DIR=/data/torrents/watch
+
+    volumes:
+      - ./data/torrents:/data/torrents
+      - ./logs:/app/logs
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

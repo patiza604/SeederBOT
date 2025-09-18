@@ -2,20 +2,52 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SeederBot API",
-    "description": "Secure FastAPI service for triggering media searches via ChatGPT webhook",
-    "version": "0.1.0"
+    "description": "Secure FastAPI service for triggering media searches via ChatGPT webhook using Radarr and Jackett integration",
+    "version": "0.1.0",
+    "contact": {
+      "name": "SeederBot Support",
+      "url": "https://github.com/your-username/seederbot"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
   },
   "servers": [
     {
       "url": "https://your-domain.com",
       "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
     }
   ],
   "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check endpoint",
+        "description": "Returns the current health status of the SeederBot service",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Health"]
+      }
+    },
     "/grab": {
       "post": {
-        "summary": "Trigger media search and download",
-        "description": "Search for and download a movie using configured media management tools",
+        "summary": "Download movie via media automation",
+        "description": "Searches for and initiates download of a movie using either Radarr integration or direct Jackett blackhole mode. The service will automatically select the best quality torrent based on configured criteria.",
         "operationId": "grabMedia",
         "requestBody": {
           "required": true,
@@ -23,33 +55,127 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GrabRequest"
+              },
+              "examples": {
+                "simpleMovie": {
+                  "summary": "Basic movie request",
+                  "value": {
+                    "title": "Inception",
+                    "year": 2010
+                  }
+                },
+                "movieWithoutYear": {
+                  "summary": "Movie without year",
+                  "value": {
+                    "title": "The Matrix"
+                  }
+                },
+                "recentMovie": {
+                  "summary": "Recent movie",
+                  "value": {
+                    "title": "Dune",
+                    "year": 2021,
+                    "type": "movie"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Successful operation",
+            "description": "Request processed successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GrabResponse"
+                },
+                "examples": {
+                  "radarrSuccess": {
+                    "summary": "Successful Radarr addition",
+                    "value": {
+                      "status": "success",
+                      "message": "Successfully added 'Inception' to Radarr with auto-search",
+                      "details": {
+                        "mode": "radarr",
+                        "title": "Inception",
+                        "year": 2010,
+                        "movie_id": 123,
+                        "tmdb_id": 27205,
+                        "search_triggered": true
+                      }
+                    }
+                  },
+                  "blackholeSuccess": {
+                    "summary": "Successful blackhole download",
+                    "value": {
+                      "status": "success",
+                      "message": "Successfully downloaded torrent for 'Inception' to blackhole",
+                      "details": {
+                        "mode": "blackhole",
+                        "title": "Inception",
+                        "year": 2010,
+                        "torrent_title": "Inception.2010.1080p.BluRay.x264-GROUP",
+                        "filename": "inception_2010_abc123.torrent",
+                        "watch_dir": "/data/torrents/watch",
+                        "seeders": 45,
+                        "size_gb": 4.2
+                      }
+                    }
+                  },
+                  "notFound": {
+                    "summary": "No suitable content found",
+                    "value": {
+                      "status": "error",
+                      "message": "No suitable torrents found for 'Nonexistent Movie'",
+                      "details": {
+                        "mode": "blackhole",
+                        "title": "Nonexistent Movie",
+                        "year": 2023
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Authentication required"
+            "description": "Authentication required - missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
           {
             "BearerAuth": []
           }
-        ]
+        ],
+        "tags": ["Media"]
       }
     }
   },
@@ -61,20 +187,29 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Movie title to search for",
-            "example": "Inception 2010"
+            "description": "Movie title to search for. Can include year or other identifying information.",
+            "example": "Inception",
+            "minLength": 1,
+            "maxLength": 255
           },
           "type": {
             "type": "string",
             "enum": ["movie"],
             "default": "movie",
-            "description": "Content type"
+            "description": "Content type - currently only movies are supported"
           },
           "year": {
             "type": "integer",
-            "description": "Optional year to help disambiguation",
-            "example": 2010
+            "description": "Optional release year to help with disambiguation and filtering",
+            "example": 2010,
+            "minimum": 1900,
+            "maximum": 2030
           }
+        },
+        "example": {
+          "title": "Inception",
+          "year": 2010,
+          "type": "movie"
         }
       },
       "GrabResponse": {
@@ -83,18 +218,72 @@
         "properties": {
           "status": {
             "type": "string",
-            "description": "Success or error status",
-            "example": "success"
+            "enum": ["success", "error"],
+            "description": "Request outcome status"
           },
           "message": {
             "type": "string",
-            "description": "Human readable message",
-            "example": "Successfully added Inception (2010) to download queue"
+            "description": "Human-readable message describing the result",
+            "example": "Successfully added 'Inception' to Radarr with auto-search"
           },
           "details": {
             "type": "object",
-            "description": "Additional response details"
+            "description": "Additional response details specific to the operation mode and outcome",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["radarr", "blackhole"],
+                "description": "The operation mode used"
+              },
+              "title": {
+                "type": "string",
+                "description": "The movie title that was processed"
+              },
+              "year": {
+                "type": "integer",
+                "description": "The movie year if provided"
+              }
+            }
           }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "mode", "version"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy"],
+            "description": "Service health status"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["radarr", "blackhole"],
+            "description": "Current operation mode of the service"
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version",
+            "example": "0.1.0"
+          }
+        },
+        "example": {
+          "status": "healthy",
+          "mode": "radarr",
+          "version": "0.1.0"
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["detail"],
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Error message describing what went wrong"
+          }
+        },
+        "example": {
+          "detail": "Invalid authentication token"
         }
       }
     },
@@ -102,8 +291,25 @@
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Bearer token authentication"
+        "bearerFormat": "JWT",
+        "description": "Bearer token authentication. Provide your API token as: 'Bearer your-token-here'"
       }
     }
+  },
+  "tags": [
+    {
+      "name": "Media",
+      "description": "Media download and management operations"
+    },
+    {
+      "name": "Health",
+      "description": "Service health and status monitoring"
+    }
+  ],
+  "x-chatgpt-action": {
+    "description": "This API allows ChatGPT to download movies through a secure media automation system. Users can request movies by title and year, and the system will automatically find and download high-quality versions.",
+    "instructions": "When a user asks to download a movie, extract the title and year (if mentioned) and call the /grab endpoint. Always confirm successful downloads and provide helpful error messages if something goes wrong.",
+    "privacy_policy_url": "https://your-domain.com/privacy",
+    "legal_info_url": "https://your-domain.com/terms"
   }
 }

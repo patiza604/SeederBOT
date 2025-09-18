@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .config import settings
 from .models import GrabRequest, GrabResponse, HealthResponse
 from .radarr import radarr_client
+from .blackhole import blackhole_client
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -111,12 +112,36 @@ async def grab_media(
                 )
 
         elif settings.mode == "blackhole":
-            # TODO: Implement blackhole path in Stage 3
-            return GrabResponse(
-                status="error",
-                message="Blackhole mode not yet implemented",
-                details={"mode": "blackhole", "title": request.title}
-            )
+            try:
+                result = await blackhole_client.grab_via_blackhole(request.title, request.year)
+                return GrabResponse(
+                    status="success",
+                    message=f"Successfully downloaded torrent for '{request.title}' to blackhole",
+                    details={
+                        "mode": "blackhole",
+                        "title": request.title,
+                        "year": request.year,
+                        "torrent_title": result["torrent"]["title"],
+                        "filename": result["download"]["filename"],
+                        "watch_dir": result["watch_dir"],
+                        "seeders": result["torrent"].get("seeders"),
+                        "size_gb": round(result["torrent"].get("size", 0) / (1024**3), 2)
+                    }
+                )
+            except ValueError as e:
+                # No suitable torrents found
+                return GrabResponse(
+                    status="error",
+                    message=str(e),
+                    details={"mode": "blackhole", "title": request.title, "year": request.year}
+                )
+            except Exception as e:
+                logger.error(f"Blackhole error: {str(e)}")
+                return GrabResponse(
+                    status="error",
+                    message="Failed to download torrent via blackhole",
+                    details={"mode": "blackhole", "title": request.title, "error": str(e)}
+                )
 
         else:
             raise HTTPException(

@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(python -m poetry run pytest:*)",
-      "Bash(python -m poetry run ruff check:*)"
+      "Bash(python -m poetry run ruff check:*)",
+      "Bash(python -m pytest -v)",
+      "Bash(docker:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,66 @@
+# Development environment with hot reload
+version: '3.8'
+
+services:
+  seederbot-dev:
+    build:
+      context: .
+      target: builder  # Use builder stage for development
+    container_name: seederbot-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_TOKEN=dev-token-12345
+      - MODE=radarr
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RADARR_URL=http://radarr:7878
+      - RADARR_API_KEY=dev-api-key
+      - ROOT_FOLDER=/movies
+      - QUALITY_PROFILE_ID=4
+      - JACKETT_URL=http://jackett:9117
+      - JACKETT_API_KEY=dev-jackett-key
+      - CATEGORIES=2000,2010
+      - MIN_SEEDERS=5  # Lower for development
+      - QUALITY_REGEX=1080p.*WEB-DL|1080p.*BluRay|720p.*WEB-DL
+      - EXCLUDE_REGEX=CAM|TS|TC|WORKPRINT
+      - MIN_SIZE_GB=1.0  # Lower for development
+      - MAX_SIZE_GB=10.0
+      - AUTOADD_WATCH_DIR=/data/torrents/watch
+    volumes:
+      - ./src:/app/src  # Hot reload
+      - ./tests:/app/tests
+      - ./data/torrents:/data/torrents
+      - ./logs:/app/logs
+    command: ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - dev-network
+
+  # Mock services for development
+  radarr-mock:
+    image: mockserver/mockserver:latest
+    container_name: radarr-mock
+    ports:
+      - "7878:1080"
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+    volumes:
+      - ./tests/mocks:/config
+    networks:
+      - dev-network
+
+  jackett-mock:
+    image: mockserver/mockserver:latest
+    container_name: jackett-mock
+    ports:
+      - "9117:1080"
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+    volumes:
+      - ./tests/mocks:/config
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge

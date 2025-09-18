@@ -41,16 +41,56 @@ clean:
 
 # Docker
 docker-build:
-	docker build -f ops/docker/Dockerfile -t seederbot:latest .
+	docker build -t seederbot:latest .
 
+docker-run:
+	docker run --rm -p 8000:8000 --env-file .env seederbot:latest
+
+docker-run-test:
+	docker run --rm -p 8001:8000 -e APP_TOKEN=test-token seederbot:latest
+
+# Docker Compose - Full stack
 docker-up:
 	$(DOCKER_COMPOSE) up -d
+
+docker-up-build:
+	$(DOCKER_COMPOSE) up -d --build
 
 docker-down:
 	$(DOCKER_COMPOSE) down
 
 docker-logs:
 	$(DOCKER_COMPOSE) logs -f
+
+# Docker Compose - Standalone
+docker-up-standalone:
+	$(DOCKER_COMPOSE) -f docker-compose.standalone.yml up -d
+
+docker-down-standalone:
+	$(DOCKER_COMPOSE) -f docker-compose.standalone.yml down
+
+# Docker Compose - Development
+docker-up-dev:
+	$(DOCKER_COMPOSE) -f docker-compose.development.yml up -d
+
+docker-down-dev:
+	$(DOCKER_COMPOSE) -f docker-compose.development.yml down
+
+# Docker Compose - With proxy
+docker-up-proxy:
+	$(DOCKER_COMPOSE) --profile proxy up -d
+
+# Docker Compose - Full media stack
+docker-up-full:
+	$(DOCKER_COMPOSE) --profile full-stack up -d
+
+# Docker cleanup
+docker-clean:
+	docker system prune -f
+	docker image prune -f
+
+docker-clean-all:
+	docker system prune -a -f
 
 # Pre-commit
 pre-commit-install:
@@ -67,14 +107,30 @@ env-example:
 # Help
 help:
 	@echo "Available commands:"
-	@echo "  install           Install dependencies"
-	@echo "  dev              Run development server"
-	@echo "  test             Run tests"
-	@echo "  lint             Check code quality"
-	@echo "  format           Format code"
-	@echo "  clean            Clean up build artifacts"
-	@echo "  docker-build     Build Docker image"
-	@echo "  docker-up        Start services with Docker Compose"
-	@echo "  docker-down      Stop Docker Compose services"
-	@echo "  pre-commit-install Install pre-commit hooks"
-	@echo "  env-example      Copy .env.example to .env"
+	@echo ""
+	@echo "Development:"
+	@echo "  install              Install dependencies"
+	@echo "  dev                  Run development server"
+	@echo "  test                 Run tests"
+	@echo "  lint                 Check code quality"
+	@echo "  format               Format code"
+	@echo "  clean                Clean up build artifacts"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build         Build Docker image"
+	@echo "  docker-run           Run single container with .env"
+	@echo "  docker-run-test      Run single container with test token"
+	@echo ""
+	@echo "Docker Compose:"
+	@echo "  docker-up            Start full media stack"
+	@echo "  docker-up-build      Start full stack with rebuild"
+	@echo "  docker-up-standalone Start SeederBot only"
+	@echo "  docker-up-dev        Start development environment"
+	@echo "  docker-up-proxy      Start with nginx proxy"
+	@echo "  docker-up-full       Start complete media stack"
+	@echo "  docker-down          Stop services"
+	@echo "  docker-logs          View service logs"
+	@echo ""
+	@echo "Environment:"
+	@echo "  env-example          Copy .env.example to .env"
+	@echo "  pre-commit-install   Install pre-commit hooks"
