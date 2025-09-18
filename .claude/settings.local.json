@@ -6,7 +6,11 @@
       "Bash(python -m poetry run ruff check:*)",
       "Bash(python -m pytest -v)",
       "Bash(docker:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(python:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,7 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from src.app.jackett import JackettClient
+
 from src.app.blackhole import BlackholeClient
+from src.app.jackett import JackettClient
 
 
 class TestJackettClient:
@@ -198,7 +200,7 @@ class TestBlackholeClient:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
 
             with patch('pathlib.Path.mkdir'):
-                with patch('builtins.open', create=True) as mock_open:
+                with patch('builtins.open', create=True):
 
                     result = await blackhole_client.download_torrent(torrent_data)
 

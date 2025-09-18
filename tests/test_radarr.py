@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from src.app.radarr import RadarrClient
 
@@ -76,7 +77,7 @@ async def test_grab_movie_year_filtering(radarr_client):
     with patch.object(radarr_client, 'search_movie', return_value=search_results), \
          patch.object(radarr_client, 'add_movie', return_value=add_result) as mock_add:
 
-        result = await radarr_client.grab_movie("Inception", 2010)
+        await radarr_client.grab_movie("Inception", 2010)
 
         # Should have selected the 2010 version
         mock_add.assert_called_once()

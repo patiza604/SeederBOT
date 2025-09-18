@@ -13,6 +13,17 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
 
+    # Logging settings
+    log_level: str = Field(default="INFO", description="Logging level")
+    structured_logging: bool = Field(default=True, description="Use structured JSON logging")
+
+    # Performance settings
+    max_concurrent_requests: int = Field(default=10, description="Maximum concurrent HTTP requests")
+    request_timeout: float = Field(default=30.0, description="HTTP request timeout in seconds")
+    cache_ttl: float = Field(default=300.0, description="Cache TTL in seconds")
+    rate_limit_per_second: float = Field(default=2.0, description="API rate limit per second")
+    rate_limit_burst: int = Field(default=5, description="API rate limit burst size")
+
     # Radarr settings (for primary path)
     radarr_url: str | None = Field(default=None)
     radarr_api_key: str | None = Field(default=None)

@@ -1,18 +1,28 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .config import settings
-from .models import GrabRequest, GrabResponse, HealthResponse
-from .radarr import radarr_client
 from .blackhole import blackhole_client
+from .config import settings
+from .error_handlers import (
+    general_exception_handler,
+    http_exception_handler,
+    seederbot_exception_handler,
+    validation_exception_handler,
+)
+from .exceptions import SeederBotException
+from .health import health_checker
+from .logging_config import get_logger, setup_logging
+from .middleware import RequestLoggingMiddleware
+from .models import GrabRequest, GrabResponse, HealthResponse, SimpleHealthResponse
+from .radarr import radarr_client
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup structured logging
+setup_logging(level=settings.log_level, structured=settings.structured_logging)
+logger = get_logger(__name__)
 
 # Security
 security = HTTPBearer()
@@ -31,20 +41,38 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"Starting SeederBot in {settings.mode} mode")
+    logger.info(
+        "Starting SeederBot",
+        extra={
+            'event': 'startup',
+            'mode': settings.mode,
+            'log_level': settings.log_level,
+            'structured_logging': settings.structured_logging
+        }
+    )
 
     # Validate configuration
-    if not settings.validate_mode_config():
-        logger.error(f"Invalid configuration for mode: {settings.mode}")
-        if settings.mode == "radarr":
-            logger.error("Missing RADARR_URL or RADARR_API_KEY")
-        elif settings.mode == "blackhole":
-            logger.error("Missing JACKETT_URL or JACKETT_API_KEY")
+    config_valid = settings.validate_mode_config()
+    if not config_valid:
+        logger.error(
+            "Invalid configuration detected",
+            extra={
+                'event': 'config_validation_failed',
+                'mode': settings.mode,
+                'radarr_configured': bool(settings.radarr_url and settings.radarr_api_key),
+                'jackett_configured': bool(settings.jackett_url and settings.jackett_api_key)
+            }
+        )
+    else:
+        logger.info(
+            "Configuration validated successfully",
+            extra={'event': 'config_validation_success', 'mode': settings.mode}
+        )
 
     yield
 
     # Shutdown
-    logger.info("Shutting down SeederBot")
+    logger.info("Shutting down SeederBot", extra={'event': 'shutdown'})
 
 
 app = FastAPI(
@@ -53,6 +81,15 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add exception handlers
+app.add_exception_handler(SeederBotException, seederbot_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+# Add middleware
+app.add_middleware(RequestLoggingMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -64,13 +101,20 @@ app.add_middleware(
 )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health", response_model=SimpleHealthResponse)
 async def health():
-    return HealthResponse(
+    """Simple health check endpoint for load balancers."""
+    return SimpleHealthResponse(
         status="healthy",
         mode=settings.mode,
         version="0.1.0"
     )
+
+
+@app.get("/health/detailed", response_model=HealthResponse)
+async def detailed_health():
+    """Comprehensive health check with component details."""
+    return await health_checker.check_overall_health()
 
 
 @app.post("/grab", response_model=GrabResponse)

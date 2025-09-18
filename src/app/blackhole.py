@@ -1,9 +1,11 @@
+import hashlib
 import logging
 import os
-import hashlib
 from pathlib import Path
 from typing import Any
+
 import httpx
+
 from .config import settings
 
 logger = logging.getLogger(__name__)
@@ -57,7 +59,7 @@ class BlackholeClient:
                 logger.error(f"Error downloading torrent: {e}")
                 raise
 
-            except IOError as e:
+            except OSError as e:
                 logger.error(f"Error writing torrent file: {e}")
                 raise
 
