@@ -1,9 +1,19 @@
 import logging
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from pythonjsonlogger.json import JsonFormatter
+# Compatibility for different Python versions and packages
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc
+
+try:
+    from pythonjsonlogger.json import JsonFormatter
+except ImportError:
+    from pythonjsonlogger import jsonlogger
+    JsonFormatter = jsonlogger.JsonFormatter
 
 
 class StructuredFormatter(JsonFormatter):

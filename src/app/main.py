@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
+import os
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .blackhole import blackhole_client
@@ -91,6 +93,36 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+def custom_openapi():
+    """
+    Inject the public server URL into the OpenAPI so ChatGPT Actions accepts it.
+    Reads PUBLIC_BASE_URL from the environment (your .env).
+    """
+    # Get public URL from environment
+    public_base_url = os.getenv("PUBLIC_BASE_URL")
+
+    # If schema already built, just ensure servers are set and return it
+    if getattr(app, "openapi_schema", None):
+        if public_base_url:
+            app.openapi_schema["servers"] = [{"url": public_base_url}]
+        return app.openapi_schema
+
+    # Build schema normally, then inject servers
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    if public_base_url:
+        openapi_schema["servers"] = [{"url": public_base_url}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+# Attach our OpenAPI generator so /openapi.json includes the public URL
+app.openapi = custom_openapi
 
 # Add exception handlers
 app.add_exception_handler(SeederBotException, seederbot_exception_handler)

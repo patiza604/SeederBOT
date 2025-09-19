@@ -23,8 +23,13 @@ ngrok http 8000
 # Use the https URL provided
 ```
 
-### Step 2: Update OpenAPI Spec
+### Step 2: Configure Your Domain
 
+**Option A: Dynamic OpenAPI (Recommended)**
+1. **Add to your `.env` file**: `PUBLIC_BASE_URL=https://your-actual-domain.com`
+2. **Access**: `https://your-actual-domain.com/openapi.json` (automatically includes your domain)
+
+**Option B: Static OpenAPI File**
 1. **Open** `chatgpt-action-spec.json`
 2. **Replace** `"url": "https://your-domain.com"` with your actual URL
 3. **Save** the file

@@ -62,10 +62,12 @@ AUTOADD_WATCH_DIR=/path/to/torrents/watch
 The system now includes a **stealth watchlist feature** that bypasses ChatGPT's content restrictions:
 
 #### Setup ChatGPT Action
-1. **Copy the OpenAPI spec**: Use `chatgpt-action-spec.json`
-2. **Update server URL**: Replace `your-domain.com` with your actual API endpoint
+1. **Set your public URL**: Add `PUBLIC_BASE_URL=https://your-domain.com` to your `.env` file
+2. **Use dynamic OpenAPI**: Access `https://your-domain.com/openapi.json` (automatically includes correct domain)
 3. **Create new ChatGPT Action** with this spec
 4. **Set authentication**: Use your APP_TOKEN as Bearer token
+
+**Alternative**: Use static `chatgpt-action-spec.json` and manually replace domain
 
 #### Usage Examples
 - **User says**: "Add Inception (2010) to my watchlist with high priority"

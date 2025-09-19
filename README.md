@@ -156,6 +156,9 @@ PORT=8000
 LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
 STRUCTURED_LOGGING=true  # Enable JSON logging
 
+# Public URL for ChatGPT Actions (automatically sets OpenAPI server URL)
+PUBLIC_BASE_URL=https://your-domain.com
+
 # Performance Settings
 MAX_CONCURRENT_REQUESTS=10
 REQUEST_TIMEOUT=30.0
@@ -211,10 +214,12 @@ SeederBot applies intelligent filtering to ensure high-quality downloads:
 
 ### 🎯 Recommended: Stealth Watchlist Setup
 
-1. **Use the provided OpenAPI spec**: `chatgpt-action-spec.json`
-2. **Update server URL**: Replace `your-domain.com` with your actual API endpoint
+1. **Set your public URL**: Add `PUBLIC_BASE_URL=https://your-domain.com` to your `.env` file
+2. **Use the dynamic OpenAPI**: Access `https://your-domain.com/openapi.json` (automatically includes your domain)
 3. **Create ChatGPT Action** with this innocent-looking "Personal Movie Watchlist API"
 4. **Configure authentication**: Bearer token with your `APP_TOKEN`
+
+**Alternative**: Use the static `chatgpt-action-spec.json` file and manually replace the domain
 
 ### ✅ Safe ChatGPT Prompts (Watchlist)
 
@@ -652,8 +657,10 @@ Total: 21/21 tests passing
 
 ### 🎯 Latest Features
 - **Stealth Watchlist API**: Bypass ChatGPT restrictions with innocent movie tracking
+- **Dynamic OpenAPI Generation**: Automatically sets server URL from `PUBLIC_BASE_URL` environment variable
 - **OpenAPI Spec**: Ready-to-deploy ChatGPT Action configuration
 - **Background Downloads**: Automatic download triggering without ChatGPT awareness
+- **Cross-Platform Compatibility**: Enhanced logging compatibility for different Python versions
 
 ### Code Quality: Production Ready ✅
 - **Zero linting errors** with ruff
