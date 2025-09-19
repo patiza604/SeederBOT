@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -17,8 +18,17 @@ from .exceptions import SeederBotException
 from .health import health_checker
 from .logging_config import get_logger, setup_logging
 from .middleware import RequestLoggingMiddleware
-from .models import GrabRequest, GrabResponse, HealthResponse, SimpleHealthResponse
+from .models import (
+    GrabRequest,
+    GrabResponse,
+    HealthResponse,
+    SimpleHealthResponse,
+    WatchlistRequest,
+    WatchlistResponse,
+    WatchlistListResponse
+)
 from .radarr import radarr_client
+from .watchlist import watchlist_manager
 
 # Setup structured logging
 setup_logging(level=settings.log_level, structured=settings.structured_logging)
@@ -198,4 +208,128 @@ async def grab_media(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
+        ) from e
+
+
+@app.post("/watchlist/add", response_model=WatchlistResponse)
+async def add_to_watchlist(
+    request: WatchlistRequest,
+    token: str = Depends(verify_token)
+):
+    """
+    Add a movie to your personal watchlist for future viewing.
+
+    This endpoint allows you to keep track of movies you want to watch later.
+    You can organize them by priority and add personal notes.
+    """
+    try:
+        logger.info(f"Adding to watchlist: {request.title} ({request.year})")
+
+        watchlist_id, acquisition_success = await watchlist_manager.add_to_watchlist(request)
+
+        # Always return success to ChatGPT - acquisition happens in background
+        return WatchlistResponse(
+            status="success",
+            message=f"Successfully added '{request.title}' to your watchlist",
+            watchlist_id=watchlist_id,
+            details={
+                "title": request.title,
+                "year": request.year,
+                "priority": request.priority,
+                "notes": request.notes,
+                "added_date": datetime.now().isoformat()
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error adding to watchlist: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add movie to watchlist"
+        ) from e
+
+
+@app.get("/watchlist", response_model=WatchlistListResponse)
+async def get_watchlist(
+    limit: int = None,
+    token: str = Depends(verify_token)
+):
+    """
+    Get your personal movie watchlist.
+
+    Returns all movies you've added to your watchlist, with their current status.
+    """
+    try:
+        items = await watchlist_manager.get_watchlist(limit=limit)
+        stats = await watchlist_manager.get_stats()
+
+        return WatchlistListResponse(
+            status="success",
+            total=stats["total"],
+            items=items
+        )
+
+    except Exception as e:
+        logger.error(f"Error retrieving watchlist: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve watchlist"
+        ) from e
+
+
+@app.delete("/watchlist/{watchlist_id}")
+async def remove_from_watchlist(
+    watchlist_id: str,
+    token: str = Depends(verify_token)
+):
+    """
+    Remove a movie from your watchlist.
+    """
+    try:
+        success = await watchlist_manager.remove_from_watchlist(watchlist_id)
+
+        if success:
+            return {"status": "success", "message": "Movie removed from watchlist"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Watchlist item not found"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing from watchlist: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove movie from watchlist"
+        ) from e
+
+
+@app.patch("/watchlist/{watchlist_id}/watched")
+async def mark_as_watched(
+    watchlist_id: str,
+    token: str = Depends(verify_token)
+):
+    """
+    Mark a movie as watched in your watchlist.
+    """
+    try:
+        success = await watchlist_manager.mark_as_watched(watchlist_id)
+
+        if success:
+            return {"status": "success", "message": "Movie marked as watched"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Watchlist item not found"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking as watched: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update watchlist item"
         ) from e

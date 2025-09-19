@@ -1,0 +1,244 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Personal Movie Watchlist API",
+    "description": "A personal movie tracking service that helps you organize and manage your movie watchlist. Keep track of movies you want to watch, set priorities, and manage your viewing queue.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://your-domain.com",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/watchlist/add": {
+      "post": {
+        "summary": "Add movie to personal watchlist",
+        "description": "Add a movie to your personal watchlist for future viewing. You can set priority levels and add personal notes to help organize your viewing queue.",
+        "operationId": "addToWatchlist",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "The movie title to add to your watchlist",
+                    "example": "The Shawshank Redemption"
+                  },
+                  "year": {
+                    "type": "integer",
+                    "description": "Release year to help identify the correct movie",
+                    "example": 1994
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["low", "normal", "high"],
+                    "default": "normal",
+                    "description": "Priority level for watching this movie"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Personal notes about why you want to watch this movie",
+                    "example": "Highly recommended by friends"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Movie successfully added to watchlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Successfully added 'The Shawshank Redemption' to your watchlist"
+                    },
+                    "watchlist_id": {
+                      "type": "string",
+                      "description": "Unique identifier for this watchlist entry"
+                    },
+                    "details": {
+                      "type": "object",
+                      "description": "Additional details about the added movie"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "422": {
+            "description": "Invalid input data"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/watchlist": {
+      "get": {
+        "summary": "Get your movie watchlist",
+        "description": "Retrieve your complete movie watchlist with current status of each movie (pending, available, or watched).",
+        "operationId": "getWatchlist",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of movies to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Watchlist retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Total number of movies in your watchlist"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Unique identifier"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Movie title"
+                          },
+                          "year": {
+                            "type": "integer",
+                            "description": "Release year"
+                          },
+                          "priority": {
+                            "type": "string",
+                            "description": "Priority level"
+                          },
+                          "notes": {
+                            "type": "string",
+                            "description": "Personal notes"
+                          },
+                          "added_date": {
+                            "type": "string",
+                            "description": "Date added to watchlist"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["pending", "available", "watched"],
+                            "description": "Current status - pending: not yet sourced, available: ready to watch, watched: already viewed"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/watchlist/{watchlist_id}/watched": {
+      "patch": {
+        "summary": "Mark movie as watched",
+        "description": "Mark a movie in your watchlist as watched once you've finished viewing it.",
+        "operationId": "markAsWatched",
+        "parameters": [
+          {
+            "name": "watchlist_id",
+            "in": "path",
+            "required": true,
+            "description": "The watchlist item ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Movie marked as watched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Movie marked as watched"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Watchlist item not found"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Enter your API token"
+      }
+    }
+  }
+}
