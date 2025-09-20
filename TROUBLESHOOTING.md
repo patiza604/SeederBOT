@@ -485,6 +485,301 @@ docker exec jackett cat /config/Jackett/log.txt
    ERROR:src.app.main:Invalid configuration for mode: radarr
    ```
 
+## 🚀 Deployment & Git Issues
+
+### Git Merge Conflicts During Deployment
+
+**Symptom:** Error when pulling updates on remote server
+```bash
+error: Your local changes to the following files would be overwritten by merge:
+	.claude/settings.local.json
+```
+
+**Solutions:**
+1. **Stash local changes** before pulling:
+   ```bash
+   git stash save "Local config changes before update"
+   git pull origin main
+   git stash pop  # Restore changes if needed
+   ```
+
+2. **Use backup strategy** for important config:
+   ```bash
+   cp .env .env.backup
+   cp .claude/settings.local.json .claude/settings.local.json.backup
+   git reset --hard HEAD
+   git pull origin main
+   # Restore configs manually
+   ```
+
+3. **Configure .gitignore** properly:
+   ```bash
+   echo ".env" >> .gitignore
+   echo ".claude/settings.local.json" >> .gitignore
+   git rm --cached .claude/settings.local.json
+   git commit -m "Remove local config from tracking"
+   ```
+
+### Service Management on Remote Servers
+
+**Starting SeederBot in Background:**
+```bash
+# Method 1: Screen session (recommended)
+screen -S seederbot
+cd /path/to/SeederBot
+poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+# Detach: Ctrl+A then D
+
+# Method 2: Systemd service
+sudo tee /etc/systemd/system/seederbot.service << EOF
+[Unit]
+Description=SeederBot API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/SeederBot
+Environment=PATH=/home/ubuntu/.local/bin
+ExecStart=/home/ubuntu/.local/bin/poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable seederbot
+sudo systemctl start seederbot
+```
+
+**Checking Service Status:**
+```bash
+# Screen sessions
+screen -ls
+screen -r seederbot  # Reattach to session
+
+# Process management
+pgrep -laf uvicorn
+ps aux | grep seederbot
+
+# Port usage
+netstat -tulpn | grep :8000
+lsof -i :8000
+```
+
+## 🤖 ChatGPT Action Configuration Issues
+
+### "Invalid Action" Error in ChatGPT
+
+**Symptom:** ChatGPT shows "invalid action" when trying to use the custom GPT
+
+**Common Causes & Solutions:**
+
+1. **OpenAPI Schema Format Issue:**
+   ```json
+   // ❌ Wrong: Using OpenAPI 3.0.0 format
+   {
+     "openapi": "3.0.0",
+     "definitions": {
+       "WatchlistRequest": {...}
+     }
+   }
+
+   // ✅ Correct: Using OpenAPI 3.1.0 format
+   {
+     "openapi": "3.1.0",
+     "components": {
+       "schemas": {
+         "WatchlistRequest": {...}
+       }
+     }
+   }
+   ```
+
+2. **Server URL Not Accessible:**
+   - Ensure your PUBLIC_BASE_URL is accessible from ChatGPT
+   - Test with curl from a different network:
+     ```bash
+     curl https://your-domain.com/openapi.json
+     curl https://your-domain.com/health
+     ```
+
+3. **Authentication Configuration:**
+   - Use "API Key" authentication type in ChatGPT
+   - Set header name to "Authorization"
+   - Set API key value to "Bearer your-actual-token"
+
+### ChatGPT Not Using the Action
+
+**Symptom:** ChatGPT responds normally but doesn't trigger the API call
+
+**Solutions:**
+
+1. **Use Explicit Action Language:**
+   ```bash
+   # ✅ More likely to trigger action:
+   "Add Inception (2010) to my watchlist using the action"
+   "Use the watchlist tool to add Dune 2021"
+
+   # ❌ May not trigger action:
+   "Add Inception to my list"
+   "I want to watch Dune"
+   ```
+
+2. **Check Action Privacy Setting:**
+   - Ensure the custom GPT action is set to "Everyone" or shared appropriately
+   - Test with a fresh conversation
+
+3. **Mobile App Limitations:**
+   - Custom actions are disabled in ChatGPT mobile apps
+   - Use web browser interface at chat.openai.com
+
+### OpenAPI Specification Issues
+
+**Dynamic vs Static OpenAPI:**
+
+1. **Dynamic (Recommended):**
+   ```bash
+   # Set in .env
+   PUBLIC_BASE_URL=https://your-domain.com
+
+   # ChatGPT will fetch from:
+   https://your-domain.com/openapi.json
+   ```
+
+2. **Static Fallback:**
+   ```bash
+   # Edit chatgpt-action-spec.json manually
+   "servers": [{"url": "https://your-actual-domain.com"}]
+   ```
+
+## 🌐 Ngrok & Tunneling Issues
+
+### Ngrok URL Changes
+
+**Symptom:** ChatGPT action stops working after ngrok restart
+
+**Solutions:**
+
+1. **Use Ngrok with Fixed Domain (Pro):**
+   ```bash
+   ngrok http 8000 --domain=your-reserved-domain.ngrok.app
+   ```
+
+2. **Update .env and Restart Services:**
+   ```bash
+   # Get new ngrok URL
+   curl -s http://localhost:4040/api/tunnels | jq '.tunnels[0].public_url'
+
+   # Update .env
+   PUBLIC_BASE_URL=https://abc123.ngrok.app
+
+   # Restart SeederBot
+   screen -S seederbot -X quit
+   screen -S seederbot
+   poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+3. **Auto-Update Script:**
+   ```bash
+   #!/bin/bash
+   # auto-update-ngrok.sh
+   NEW_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+   if [ "$NEW_URL" != "null" ]; then
+       sed -i "s|PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=$NEW_URL|" .env
+       echo "Updated PUBLIC_BASE_URL to $NEW_URL"
+       # Restart your service here if needed
+   fi
+   ```
+
+### Port Conflicts with Ngrok
+
+**Error:** Port 8000 already in use
+
+**Solutions:**
+```bash
+# Find process using port
+lsof -i :8000
+netstat -tulpn | grep :8000
+
+# Use different port
+poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8011
+ngrok http 8011
+
+# Update .env if needed
+PORT=8011
+```
+
+## 📱 Mobile App Limitations
+
+### ChatGPT Mobile Apps
+
+**Issue:** Custom GPT actions don't work on mobile
+
+**Workaround:**
+1. **Use Web Browser:** Access chat.openai.com on mobile browser
+2. **Desktop Only:** Custom actions only work in web interface
+3. **Alternative:** Create IFTTT/Zapier webhook integration
+
+### Browser Compatibility
+
+**Tested Browsers:**
+- ✅ Chrome/Chromium (recommended)
+- ✅ Firefox
+- ✅ Safari
+- ❌ Internet Explorer (not supported)
+
+## 🔄 Service Update & Maintenance
+
+### Updating SeederBot
+
+**Safe Update Procedure:**
+```bash
+# 1. Backup current state
+cp .env .env.backup
+git stash save "Local changes before update $(date)"
+
+# 2. Pull updates
+git pull origin main
+
+# 3. Update dependencies
+poetry install
+
+# 4. Check for config changes
+diff .env.example .env.backup
+
+# 5. Test locally first
+poetry run pytest
+
+# 6. Restart service
+screen -S seederbot -X quit
+screen -S seederbot
+poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Environment Variable Issues
+
+**New Required Variables:**
+When updating, check for new required environment variables:
+
+```bash
+# Compare with example
+diff .env .env.example
+
+# Common new variables to add:
+PUBLIC_BASE_URL=https://your-domain.com
+STRUCTURED_LOGGING=true
+LOG_LEVEL=INFO
+```
+
+### Database/State Migration
+
+**Watchlist Data:**
+- Watchlist is stored in memory (resets on restart)
+- For persistent storage, implement database backend
+- Export/import functionality available via API
+
 ## 🆘 Getting Help
 
 If you're still experiencing issues:

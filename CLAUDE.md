@@ -238,6 +238,77 @@ Mode B (Fallback): POST /grab → Jackett API → Download .torrent → Watch Fo
 
 ## Troubleshooting
 
+### ⚡ Critical Deployment Issues (Real-World Experience)
+
+#### Git Merge Conflicts on Server Updates
+**Problem**: Local config files conflict when pulling updates
+```bash
+error: Your local changes to the following files would be overwritten by merge:
+	.claude/settings.local.json
+```
+**Solution**: Use git stash before updates:
+```bash
+git stash save "Local changes before update"
+git pull origin main
+git stash pop  # Restore if needed
+```
+
+#### ChatGPT Action "Invalid Action" Errors
+**Problem**: OpenAPI schema format issues cause action failures
+**Root Cause**: Using OpenAPI 3.0.0 format instead of 3.1.0
+**Solution**: Ensure correct schema format:
+```json
+// ✅ Correct format
+{
+  "openapi": "3.1.0",
+  "components": {
+    "schemas": { "WatchlistRequest": {...} }
+  }
+}
+```
+
+#### Service Management on Remote Servers
+**Problem**: Service doesn't persist after SSH disconnect
+**Solution**: Use screen sessions for background services:
+```bash
+screen -S seederbot
+poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+# Detach: Ctrl+A then D
+# Reattach: screen -r seederbot
+```
+
+#### Port Conflicts During Development
+**Problem**: Port 8000 already in use, causing bind failures
+**Solution**: Use different port and update configurations:
+```bash
+# Use port 8011 instead
+poetry run uvicorn src.app.main:app --host 0.0.0.0 --port 8011
+ngrok http 8011
+# Update PUBLIC_BASE_URL in .env with new ngrok URL
+```
+
+#### ChatGPT Mobile App Limitations
+**Problem**: Custom actions don't work on ChatGPT mobile apps
+**Solution**: Use web browser (chat.openai.com) for custom actions
+**Note**: This is a ChatGPT platform limitation, not a SeederBot issue
+
+#### Ngrok URL Changes Breaking Actions
+**Problem**: Actions stop working when ngrok restarts with new URL
+**Solution**: Auto-update script or use reserved domain:
+```bash
+# Get new URL and update .env automatically
+NEW_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+sed -i "s|PUBLIC_BASE_URL=.*|PUBLIC_BASE_URL=$NEW_URL|" .env
+```
+
+#### Environment Variable Missing (PUBLIC_BASE_URL)
+**Problem**: ValidationError when starting with new watchlist feature
+**Solution**: Add missing environment variable:
+```bash
+# Add to .env file
+PUBLIC_BASE_URL=https://your-domain.com
+```
+
 ### Common Issues
 - **Radarr not starting**: Check permissions, ensure TMPDIR is set
 - **API timeouts**: Verify network connectivity between services
@@ -252,9 +323,42 @@ tail -f ~/.config/Radarr/logs/radarr.txt
 # Test Radarr API directly
 curl -H "X-Api-Key: your-key" http://your-radarr:port/api/v3/system/status
 
-# Check app logs
+# Check app logs with debug level
 poetry run uvicorn src.app.main:app --log-level debug
+
+# Screen session management
+screen -ls                    # List sessions
+screen -r seederbot          # Reattach to session
+screen -S seederbot -X quit  # Kill session
+
+# Port and process debugging
+lsof -i :8000                # Check what's using port
+netstat -tulpn | grep :8000  # Alternative port check
+pgrep -laf uvicorn           # Find uvicorn processes
+
+# Ngrok debugging
+curl -s http://localhost:4040/api/tunnels | jq  # Get tunnel info
 ```
+
+### Production Deployment Checklist
+Based on real deployment experience:
+
+1. **Pre-deployment**:
+   - [ ] Backup current .env and configs
+   - [ ] Test locally with `poetry run pytest`
+   - [ ] Check for new environment variables in .env.example
+
+2. **Deployment**:
+   - [ ] Use `git stash` before pulling updates
+   - [ ] Update dependencies with `poetry install`
+   - [ ] Start in screen session for persistence
+   - [ ] Update PUBLIC_BASE_URL if using ngrok
+
+3. **Post-deployment**:
+   - [ ] Test health endpoint
+   - [ ] Verify ChatGPT Action still works
+   - [ ] Check logs for any errors
+   - [ ] Test watchlist functionality
 
 ## Project Structure
 ```

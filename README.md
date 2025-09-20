@@ -493,7 +493,9 @@ Built-in performance optimizations and monitoring:
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+For comprehensive troubleshooting including **real-world deployment issues**, **ChatGPT Action configuration problems**, and **service management solutions**, see the complete [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md) guide.
+
+### Quick Common Issues
 
 #### "getaddrinfo failed" Error
 - **Cause**: Cannot resolve hostname (e.g., `radarr`, `jackett`)
@@ -506,6 +508,11 @@ Built-in performance optimizations and monitoring:
 #### "Authentication failed"
 - **Cause**: Invalid API keys or incorrect URLs
 - **Solution**: Verify API keys in Radarr/Jackett web interfaces
+
+#### ChatGPT "Invalid Action" Error
+- **Cause**: Usually OpenAPI schema format issues
+- **Solution**: Ensure using OpenAPI 3.1.0 format with `components/schemas` structure
+- **More details**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#chatgpt-action-configuration-issues)
 
 #### Container health check failures
 - **Cause**: Service not ready or misconfiguration
@@ -540,6 +547,12 @@ curl "http://localhost:9117/api/v2.0/indexers/all/results/torznab?apikey=your-ke
 - **Resource Limits**: Adjust Docker memory/CPU limits for your hardware
 - **Cache Settings**: Tune CACHE_TTL for your usage patterns
 - **Rate Limiting**: Adjust rate limits based on your indexer requirements
+
+### 🆘 Need More Help?
+
+- **Comprehensive Guide**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Covers deployment, ChatGPT Actions, service management, and more
+- **Setup Guide**: [WATCHLIST_SETUP.md](WATCHLIST_SETUP.md) - Step-by-step ChatGPT Action configuration
+- **Development Notes**: [CLAUDE.md](CLAUDE.md) - Technical details and development context
 
 ## 🧪 Development
 
